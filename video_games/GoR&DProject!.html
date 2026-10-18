@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go R&D Project!</title>
+    <style>
+        body { margin: 0; background: #0f0e17; color: #fffffe; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; overflow-y: auto; padding: 10px 0; }
+        #setup-screen { background: #1f1e26; padding: 30px; border-radius: 12px; border: 3px solid #ff8906; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 560px; text-align: center; position: relative; }
+        #gameover-screen { text-align: center; background: #1f1e26; padding: 30px; border-radius: 12px; border: 3px solid #ff8906; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 480px; }
+        h1 { color: #ff8906; margin: 0 0 5px 0; font-size: 38px; text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { color: #a7a9be; margin-bottom: 20px; font-size: 16px; }
+        .lore-text { color: #fffffe; font-size: 15px; line-height: 1.5; margin: 20px 10px; padding: 15px; background: #2a2836; border-left: 4px solid #ff8906; border-radius: 4px; text-align: left; }
+        input { padding: 12px; font-size: 16px; border-radius: 4px; border: none; width: 60%; margin-bottom: 20px; text-align: center; background: #fffffe; color: #0f0e17; font-weight: bold; }
+        button { background: #ff8906; color: #fffffe; border: none; padding: 14px 45px; font-size: 22px; font-weight: bold; border-radius: 4px; cursor: pointer; text-transform: uppercase; margin: 10px 5px; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        button:hover { background: #f25f4c; transform: translateY(-1px); }
+        .hidden { display: none !important; }
+        
+        .guide-box { background: #0f0e17; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: left; font-size: 13px; border: 1px solid #3a3a4a; max-height: 220px; overflow-y: auto; }
+        .guide-title { color: #ff8906; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; font-size: 14px; border-bottom: 1px solid #3a3a4a; padding-bottom: 5px; }
+        .guide-item { display: flex; align-items: center; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #242430; }
+        .guide-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .badge { width: 16px; height: 16px; display: inline-block; border-radius: 3px; margin-right: 10px; flex-shrink: 0; }
+        
+        #canvas-container { position: relative; border: 4px solid #ff8906; border-radius: 8px; background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        canvas { display: block; }
+        #pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 14, 23, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-size: 24px; font-weight: bold; }
+        
+        .victory-text { font-size: 16px; color: #a7a9be; line-height: 1.6; margin: 15px 0; opacity: 0; transform: translateY(10px); transition: all 1s ease; }
+        .victory-text.show { opacity: 1; transform: translateY(0); }
+        .next-adventure { font-style: italic; color: #ff8906; font-weight: bold; font-size: 14px; margin-top: 20px; }
+        
+        .credits { font-size: 12px; color: #7f8c8d; margin-top: 25px; border-top: 1px solid #2a2836; padding-top: 10px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <h1>Go R&D Project!</h1>
+        <div class="subtitle"></div>
+        
+        <div class="lore-text">
+            Vous êtes un chercheur qui croit encore en la science. Votre job : convaincre qu'il faut lancer votre projet de recherche. Affrontez les obstacles pour parvenir à convaincre votre CEO !
+        </div>
+
+        <input type="text" id="player-name" placeholder="Entrez votre nom..." maxlength="12" value="">
+        <br>
+        <button id="start-btn" onclick="startGame()">Go !</button>
+
+        <div class="guide-box">
+            <div class="guide-title">📋 Manuel de Survie en Open Space</div>
+            <div class="guide-item">
+                <span class="badge" style="background: #e8a7f5;"></span>
+                <div><strong>Assistante Utile (Rare) :</strong> Vous offre un café/croissant en face à face (+20% Motivation).</div>
+            </div>
+            <div class="guide-item">
+                <span class="badge" style="background: #ffffff;"></span>
+                <div><strong>Chercheur Distrait :</strong> Il avance et renverse son café. Ne marchez pas sur la flaque ou vous glisserez !</div>
+            </div>
+            <div class="guide-item">
+                <span class="badge" style="background: #e74c3c;"></span>
+                <div><strong>Ingénieur Sédentaire :</strong> Bloqué à sa paillasse, s'il vous attrape, il vous coince 3s pour parler d'un bug !</div>
+            </div>
+            <div class="guide-item">
+                <span class="badge" style="background: #d63031;"></span>
+                <div><strong>Escorte du Boss :</strong> Lèche-culs et Secrétaire de direction protègent le CEO. Éliminez-les par le haut.</div>
+            </div>
+        </div>
+
+        <p style="font-size: 12px; color: #a7a9be; margin: 0 0 10px 0;">
+            <strong>Commandes :</strong> Flèches Gauche/Droite • Espace ou Haut pour Sauter • Touche <strong>P</strong> pour la Pause • <em>Gare aux trous sur la terrasse !</em>
+        </p>
+
+        <div class="credits">Conçu avec amour et Gemini Flash ⚡</div>
+    </div>
+
+    <div id="canvas-container" class="hidden">
+        <canvas id="gameCanvas" width="1100" height="550"></canvas>
+        <div id="pause-overlay" class="hidden">
+            <p style="color: #ff8906; font-size: 32px; margin-bottom: 20px;">DEADLINE EN PAUSE</p>
+            <button onclick="togglePause()">Reprendre (P)</button>
+            <button onclick="resetGame()">Recommencer</button>
+        </div>
+    </div>
+
+    <div id="gameover-screen" class="hidden">
+        <h1 id="end-title">FIN DE PARTIE</h1>
+        <p id="end-message" style="font-size: 16px; margin: 15px 0;"></p>
+        <div id="victory-details"></div>
+        <button id="end-action-btn" onclick="resetGame()">Retenter ma chance</button>
+    </div>
+
+    <script>
+        let userName = "Chercheur";
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let gameActive = false;
+        let isPaused = false;
+        let currentLevel = 1;
+        let score = 0;
+        let statusText = "";
+        let statusTimer = 0;
+        let cameraX = 0;
+        const worldWidth = 4200;
+
+        let timeLeft = 90; 
+        let stunTimer = 0; 
+        let slipTimer = 0; 
+        let slipDir = 1;
+        let engineerHoldTimer = 0; 
+
+        let chairSpawnTimer = 0;
+        let planeSpawnTimer = 0;
+        let leftSpawnTimer = 0; 
+        let einsteinSpawnTimer = 0; 
+
+        const levelConfig = {
+            1: { 
+                name: "Niveau 1 : Les Labos de Prototypes (Calme)", 
+                bgColor: "#131921", groundColor: "#2c3e50", decorColor: "#7f8c8d", windowColor: "#cbd5e1",
+                bossName: "Chef de Labo", bossColor: "#95a5a6", hp: 3, duration: 90, bossSpeed: 1.5, 
+                allowChairs: false, allowPlanes: false, bossAttackRate: 3.0, projSpeed: 2.5, 
+                quotes: ["tâche urgente", "note à relire", "des slides à faire"], 
+                bossJumpChance: 0.0, bossJumpForce: 0, bossHeights: ["mid"], speedMultiplier: 1.0, isExterior: false 
+            },
+            2: { 
+                name: "Niveau 2 : L'Open Space des Ingénieurs (Intermédiaire)", 
+                bgColor: "#161824", groundColor: "#1e272e", decorColor: "#34495e", windowColor: "#57606f",
+                bossName: "Directeur Planning", bossColor: "#ec407a", hp: 4, duration: 80, bossSpeed: 2.8, 
+                allowChairs: true, allowPlanes: false, bossAttackRate: 2.2, projSpeed: 6.8, 
+                quotes: ["Livrable ASAP !", "Rapport financier", "tâche urgente"], 
+                bossJumpChance: 0.15, bossJumpForce: 11, bossHeights: ["mid", "low"], speedMultiplier: 1.4, isExterior: false 
+            },
+            3: { 
+                name: "Niveau 3 : Le Conseil d'Administration (Intense)", 
+                bgColor: "#22141c", groundColor: "#341f27", decorColor: "#5c3a21", windowColor: "#d2b48c",
+                bossName: "Le Grand CEO", bossColor: "#d32f2f", hp: 5, duration: 70, bossSpeed: 4.2, 
+                allowChairs: true, allowPlanes: true, bossAttackRate: 1.5, projSpeed: 9.5, 
+                quotes: ["Restructuration !", "KPI en baisse", "Livrable ASAP !"], 
+                bossJumpChance: 0.4, bossJumpForce: 15, bossHeights: ["low", "mid", "high"], speedMultiplier: 1.8, isExterior: false 
+            },
+            4: { 
+                name: "Niveau Bonus : Pause Clope & Café (Terrasse)", 
+                bgColor: "#0f2027", groundColor: "#203a43", decorColor: "#78909c", windowColor: "#b0bec5",
+                bossName: "Manager Déprimé", bossColor: "#795548", hp: 4, duration: 65, bossSpeed: 2.0, 
+                allowChairs: true, allowPlanes: true, bossAttackRate: 1.8, projSpeed: 5.5, 
+                quotes: ["À quoi je sers ?", "Burnout imminent", "Réunion inutile"], 
+                bossJumpChance: 0.3, bossJumpForce: 12, bossHeights: ["low", "mid", "high"], speedMultiplier: 1.3, isExterior: true 
+            }
+        };
+
+        let player = {
+            x: 100, y: 350, w: 32, h: 56, vx: 0, vy: 0,
+            grounded: false, speed: 6.5, jumpForce: 16.0,
+            energy: 100, maxEnergy: 100
+        };
+
+        let platforms = [];
+        let entities = [];
+        let projectiles = []; 
+        let blocks = [];      
+        let puddles = []; 
+        let backgroundDecors = []; 
+        let smokeParticles = [];
+        let boss = null;
+        let keys = {};
+        let lastTime = 0;
+
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if((e.code === "Space" || e.code === "ArrowUp") && gameActive) e.preventDefault();
+            if(e.code === "KeyP" && gameActive) togglePause();
+        });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function startGame() {
+            const input = document.getElementById('player-name').value;
+            userName = input.trim() !== "" ? input : "Chercheur";
+            
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('gameover-screen').classList.add('hidden');
+            document.getElementById('canvas-container').classList.remove('hidden');
+            
+            currentLevel = 1;
+            score = 0;
+            resetLevel();
+            gameActive = true;
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function togglePause() { if (gameActive) { isPaused = !isPaused; document.getElementById('pause-overlay').classList.toggle('hidden', !isPaused); } }
+        function resetGame() { isPaused = false; document.getElementById('pause-overlay').classList.add('hidden'); startGame(); }
+        function triggerStatus(text) { statusText = text; statusTimer = 130; }
+
+        function generateBackgroundDecors() {
+            backgroundDecors = [];
+            smokeParticles = [];
+            let conf = levelConfig[currentLevel];
+            
+            if (conf.isExterior) {
+                // Mode terrasse extérieure : uniquement les balustrades
+                for (let x = 0; x < worldWidth; x += 120) {
+                    backgroundDecors.push({ x: x, y: 440, type: "balustrade", w: 100, h: 60 });
+                }
+                return;
+            }
+
+            // Mode Bureau / Intérieur (Niveaux 1, 2, 3) : Décors diversifiés
+            const decorTypes = ["tableau", "ecran", "ecran", "tubes", "aquarium", "poster", "portrait_geant"];
+            const sciAffirmations = [
+                "Le p-value n'est pas une probabilité absolue !",
+                "Corrélation n'est pas Causalité.",
+                "R² ajusté ou rien du tout !",
+                "Espace de Hilbert = Espace vectoriel complet.",
+                "Functional ANOVA exige de la rigueur !"
+            ];
+            const scientists = ["curie", "einstein", "tesla"];
+            let tableStyleIndex = 0;
+            let scientistIndex = 0;
+            let affirmationIndex = 0;
+            
+            // Plafonniers
+            for (let x = 100; x < worldWidth; x += 300) {
+                backgroundDecors.push({ x: x, y: 0, type: "lampe", w: 60, h: 40 });
+            }
+
+            // Éléments muraux
+            for (let x = 300; x < worldWidth - 400; x += 320 + Math.random() * 200) {
+                let type = decorTypes[Math.floor(Math.random() * decorTypes.length)];
+                
+                if (type === "tableau") {
+                    backgroundDecors.push({ x: x, y: 130, type: "tableau", w: 180, h: 110, styleIndex: tableStyleIndex % 3 });
+                    tableStyleIndex++;
+                } else if (type === "ecran") {
+                    backgroundDecors.push({ x: x, y: 150, type: "ecran", w: 110, h: 75, seed: Math.random() });
+                } else if (type === "tubes") {
+                    backgroundDecors.push({ x: x, y: 110, type: "tubes", w: 90, h: 140, fluidColor: Math.random() > 0.5 ? "#00d2d3" : "#ff9f43" });
+                } else if (type === "aquarium") {
+                    backgroundDecors.push({ 
+                        x: x, y: 220, type: "aquarium", w: 130, h: 80, 
+                        fishes: [{ rx: 20, ry: 25, speed: 0.6, dir: 1, color: "#ff7675", size: 7 }, { rx: 70, ry: 50, speed: 0.5, dir: -1, color: "#fdcb6e", size: 8 }]
+                    });
+                } else if (type === "poster") {
+                    backgroundDecors.push({ x: x, y: 120, type: "poster", w: 130, h: 90, text: sciAffirmations[affirmationIndex % sciAffirmations.length] });
+                    affirmationIndex++;
+                } else if (type === "portrait_geant") {
+                    backgroundDecors.push({ x: x, y: 90, type: "portrait_geant", w: 120, h: 150, target: scientists[scientistIndex % scientists.length] });
+                    scientistIndex++;
+                }
+            }
+        }
+
+        function resetLevel() {
+            let conf = levelConfig[currentLevel];
+            player.x = 100; player.y = 350; player.vx = 0; player.vy = 0;
+            player.energy = 100;
+            timeLeft = conf.duration;
+            stunTimer = 0; slipTimer = 0; engineerHoldTimer = 0;
+            cameraX = 0;
+            projectiles = []; puddles = [];
+            chairSpawnTimer = 0; planeSpawnTimer = 0; leftSpawnTimer = 0; einsteinSpawnTimer = 0;
+
+            generateBackgroundDecors();
+
+            platforms = [];
+            if (conf.isExterior) {
+                let floorX = 0;
+                while (floorX < worldWidth) {
+                    let platW = 450 + Math.random() * 300;
+                    if (floorX > worldWidth - 700) platW = 700; 
+                    platforms.push({ x: floorX, y: 500, w: platW, h: 50, type: "floor", color: conf.groundColor });
+                    floorX += platW + 95 + Math.random() * 50; 
+                }
+            } else {
+                platforms.push({ x: 0, y: 500, w: worldWidth, h: 50, type: "floor", color: conf.groundColor });
+            }
+
+            blocks = [];
+            let nextX = 550;
+            const platformObjects = [
+                { name: "Armoire forte", w: 85, h: 140, color: conf.decorColor },
+                { name: "Armoire vitrée", w: 90, h: 160, color: conf.decorColor },
+                { name: "Bureau de Labo", w: 170, h: 75, color: conf.decorColor },
+                { name: "Bureau Bloquant", w: 95, h: 150, color: conf.decorColor },
+                { name: "Paillasse technique", w: 130, h: 85, color: conf.decorColor },
+                { name: "Rebord de fenêtre", w: 140, h: 18, color: conf.windowColor },
+                { name: "Machine à Café", w: 70, h: 110, color: "#854d0e" }
+            ];
+
+            while (nextX < worldWidth - 700) {
+                let isOnSolidGround = false;
+                platforms.forEach(plat => {
+                    if (nextX >= plat.x && nextX + 180 <= plat.x + plat.w) isOnSolidGround = true;
+                });
+
+                if (!conf.isExterior || isOnSolidGround) {
+                    let obj = platformObjects[Math.floor(Math.random() * platformObjects.length)];
+                    let actualY = 500 - obj.h;
+                    if (obj.name === "Rebord de fenêtre") actualY = 240 + Math.random() * 80;
+
+                    // Les ingénieurs sédentaires sont fixés sur les bureaux/paillasses
+                    let hasLazyEngineer = ((obj.name === "Bureau de Labo" || obj.name === "Paillasse technique") && Math.random() < 0.70);
+
+                    platforms.push({ 
+                        x: nextX, 
+                        y: actualY, 
+                        w: obj.w, 
+                        h: obj.name === "Rebord de fenêtre" ? obj.h : 500 - actualY, 
+                        type: obj.name, 
+                        usedCoffee: false,
+                        color: obj.color || conf.decorColor,
+                        lazyEng: hasLazyEngineer ? { xOffset: obj.w / 2 - 12, color: "#e74c3c", caught: false } : null
+                    });
+
+                    if (Math.random() < 0.7 && obj.name !== "Bureau Bloquant") {
+                        blocks.push({ x: nextX + obj.w / 2 - 14, y: actualY - 100, w: 28, h: 28, type: Math.random() > 0.4 ? "?" : "!", used: false });
+                    }
+                }
+                nextX += 290 + Math.random() * 140;
+            }
+
+            entities = [];
+            
+            if (conf.isExterior) {
+                // Configuration Terrasse : Variété de comportements
+                let suicidalCount = 0; 
+                for (let x = 400; x < worldWidth - 700; x += 300 + Math.random() * 150) {
+                    let onPlat = null;
+                    platforms.forEach(p => { if (x >= p.x && x + 30 <= p.x + p.w) onPlat = p; });
+                    
+                    if (onPlat) {
+                        let rand = Math.random();
+                        if (rand < 0.35) {
+                            // Groupe statique de fumeurs (2 personnes côte à côte)
+                            entities.push({ x: x, y: 458, w: 28, h: 42, vx: 0, vy: 0, grounded: true, name: "Fumeur 🚬", color: "#60a5fa", type: "smoker", platBound: onPlat });
+                            entities.push({ x: x + 35, y: 458, w: 28, h: 42, vx: 0, vy: 0, grounded: true, name: "Fumeur 🚬", color: "#34d399", type: "smoker", platBound: onPlat });
+                            x += 50;
+                        } else if (rand < 0.70) {
+                            // PNJ qui marche fixé sur son smartphone
+                            entities.push({ x: x, y: 458, w: 28, h: 42, vx: -1.0, baseVx: -1.0, vy: 0, grounded: true, name: "Accro au Phone 📱", color: "#fbbf24", type: "phone_user", platBound: onPlat, isSuicidal: false });
+                        } else {
+                            // Marcheur normal ou distrait qui peut tomber
+                            let suicidal = (suicidalCount < 2 && Math.random() > 0.5);
+                            if (suicidal) suicidalCount++;
+                            entities.push({ x: x, y: 458, w: 28, h: 42, vx: -1.5, baseVx: -1.5, vy: 0, grounded: true, name: suicidal ? "Stagiaire Distrait 🫨" : "Chercheur R&D", color: "#a78bfa", type: "terrasse_walker", platBound: onPlat, isSuicidal: suicidal });
+                        }
+                    }
+                }
+            } else {
+                // Niveaux classiques
+                let usefulAssistantCount = Math.floor(Math.random() * 2) + 1;
+                const standardEnemyTypes = [
+                    { name: "Stagiaire déboussolé", color: "#2ecc71", vx: -1.5 * conf.speedMultiplier, type: "stagiaire", dmg: 3 },
+                    { name: "Doctorant fatigué", color: "#95a5a6", vx: -0.7 * conf.speedMultiplier, type: "doctorant", dmg: 5, msg: "⚠️ Baisse de motivation au contact du doctorant." },
+                    { name: "Chef de projet stressé", color: "#f39c12", vx: -1.8 * conf.speedMultiplier, type: "malus", dmg: 6, msg: "💥 Point synchro imprévu !" }
+                ];
+
+                for (let x = 700; x < worldWidth - 650; x += 350 + Math.random() * 150) {
+                    let isOnSolidGround = false;
+                    platforms.forEach(plat => { if (plat.type === "floor" && x >= plat.x && x + 30 <= plat.x + plat.w) isOnSolidGround = true; });
+
+                    if (isOnSolidGround) {
+                        let t;
+                        if (usefulAssistantCount > 0 && Math.random() < 0.22) {
+                            t = { name: "Assistante Utile ☕", color: "#e8a7f5", vx: -1.2 * conf.speedMultiplier, type: "assistante_cool", dmg: -20, msg: "🍩 Un café et un croissant offerts ! (+20% Motivation)" };
+                            usefulAssistantCount--;
+                        } else {
+                            t = standardEnemyTypes[Math.floor(Math.random() * standardEnemyTypes.length)];
+                        }
+                        entities.push({ 
+                            x: x, y: 458, w: 28, h: 42, vx: t.vx, baseVx: t.vx, vy: 0, grounded: true,
+                            name: t.name, color: t.color, type: t.type, msg: t.msg, dmg: t.dmg, jumpTimer: 1.0 + Math.random() * 2 
+                        });
+                    }
+                }
+            }
+
+            boss = {
+                x: worldWidth - 250, y: 394, w: 50, h: 106, vx: conf.bossSpeed, vy: 0, baseSpeed: conf.bossSpeed,
+                minX: worldWidth - 550, maxX: worldWidth - 60, hp: conf.hp, maxHp: conf.hp, grounded: true,
+                name: conf.bossName, color: conf.bossColor, alive: true, attackTimer: 0,
+                moodTimer: 2.5, isAngry: false, angryDuration: 0, jumpTimer: 2.0
+            };
+
+            entities.push({ x: worldWidth - 650, y: 458, w: 28, h: 42, vx: -0.5, baseVx: -0.5, vy:0, grounded:true, name: "Lèche-cul N°1", color: "#e74c3c", type: "barrage", dmg: 8, msg: "🛑 'Le chef n'a pas le temps !'" });
+            entities.push({ x: worldWidth - 580, y: 458, w: 28, h: 42, vx: 0.5, baseVx: 0.5, vy:0, grounded:true, name: "Assistante de Direction", color: "#9b59b6", type: "barrage", dmg: 10, msg: "📋 'Avez-vous rempli le formulaire B32 ?'" });
+
+            triggerStatus("💼 Entrée dans : " + conf.name);
+        }
+
+        function gameLoop(now) {
+            if (!gameActive) return;
+            let dt = (now - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1;
+            lastTime = now;
+
+            if (!isPaused) {
+                if (engineerHoldTimer <= 0 && stunTimer <= 0) timeLeft -= dt;
+                else { timeLeft -= dt * 2.0; }
+
+                if (engineerHoldTimer > 0) engineerHoldTimer -= dt;
+
+                if (timeLeft <= 0) {
+                    endGame(false, "⏱️ Deadline dépassée ! Projet de recherche abandonné.");
+                    return;
+                }
+                
+                let conf = levelConfig[currentLevel];
+                
+                if (conf.allowChairs) {
+                    chairSpawnTimer += dt;
+                    if(chairSpawnTimer > 3.0 + Math.random() * 3) {
+                        let isDrawer = Math.random() > 0.5;
+                        projectiles.push({ x: Math.min(worldWidth, player.x + 850), y: isDrawer ? 460 : 466, w: isDrawer ? 34 : 35, h: isDrawer ? 40 : 34, vx: -7.0, vy: 0, type: isDrawer ? "drawer" : "chair" });
+                        chairSpawnTimer = 0;
+                    }
+                }
+                if (conf.allowPlanes) {
+                    planeSpawnTimer += dt;
+                    if(planeSpawnTimer > 3.5 + Math.random() * 2) {
+                        projectiles.push({ x: Math.min(worldWidth, player.x + 850), y: 60 + Math.random() * 100, w: 24, h: 14, vx: -6.0, vy: 1.0, type: "plane" });
+                        planeSpawnTimer = 0;
+                    }
+                }
+
+                if (!conf.isExterior) {
+                    leftSpawnTimer += dt;
+                    if (leftSpawnTimer > 7.0 + Math.random() * 5) {
+                        if (player.x > 300) {
+                            entities.push({ x: cameraX - 40, y: 458, w: 28, h: 42, vx: 2.5 * conf.speedMultiplier, baseVx: 2.5 * conf.speedMultiplier, vy:0, grounded:true, name: "Collègue pressé 🏃", color: "#1abc9c", type: "malus", dmg: 5, msg: "💥 Bousculé par derrière !" });
+                        }
+                        leftSpawnTimer = 0;
+                    }
+
+                    einsteinSpawnTimer += dt;
+                    if (einsteinSpawnTimer > 9.0 + Math.random() * 6) {
+                        entities.push({ x: Math.min(worldWidth, player.x + 700), y: 458, w: 28, h: 42, vx: -2.0 * conf.speedMultiplier, baseVx: -2.0 * conf.speedMultiplier, vy:0, grounded:true, name: "Chercheur Distrait 🔬", color: "#ffffff", type: "einstein", coffeeTimer: 1.2 });
+                        einsteinSpawnTimer = 0;
+                    }
+                }
+
+                // Particules des fumeurs sur la terrasse
+                entities.forEach(ent => {
+                    if (ent.type === "smoker" && Math.random() < 0.04) {
+                        smokeParticles.push({ x: ent.x + ent.w/2, y: ent.y + 12, vx: -0.2 + Math.random()*0.4, vy: -0.6 - Math.random()*0.5, alpha: 1.0 });
+                    }
+                });
+                smokeParticles.forEach(p => { p.x += p.vx; p.y += p.vy; p.alpha -= 0.015; });
+                smokeParticles = smokeParticles.filter(p => p.alpha > 0);
+
+                backgroundDecors.forEach(dec => {
+                    if (dec.type === "aquarium") {
+                        dec.fishes.forEach(f => {
+                            f.rx += f.dir * f.speed;
+                            if (f.rx < 8 || f.rx > dec.w - 18) f.dir *= -1;
+                        });
+                    }
+                });
+
+                update(dt);
+            }
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update(dt) {
+            let conf = levelConfig[currentLevel];
+
+            if (engineerHoldTimer > 0 || stunTimer > 0) { 
+                player.vx = 0; 
+            } else if (slipTimer > 0) {
+                slipTimer -= dt;
+                player.vx = slipDir * (player.speed * 1.4); 
+            } else {
+                if (keys["ArrowLeft"]) player.vx = -player.speed;
+                else if (keys["ArrowRight"]) player.vx = player.speed;
+                else player.vx = 0;
+                if ((keys["Space"] || keys["ArrowUp"]) && player.grounded) { player.vy = -player.jumpForce; player.grounded = false; }
+            }
+
+            player.x += player.vx;
+
+            platforms.forEach(plat => {
+                if (plat.type === "Bureau Bloquant" || plat.type === "Armoire forte" || plat.type === "Armoire vitrée") {
+                    if (player.x < plat.x + plat.w && player.x + player.w > plat.x && player.y + player.h > plat.y + 10) {
+                        if (player.vx > 0) player.x = plat.x - player.w;
+                        else if (player.vx < 0) player.x = plat.x + plat.w;
+                    }
+                }
+                
+                // Interaction avec l'ingénieur sédentaire scotché au bureau
+                if (plat.lazyEng && engineerHoldTimer <= 0) {
+                    let engAbsX = plat.x + plat.lazyEng.xOffset;
+                    let engAbsY = plat.y - 42;
+                    if (player.x < engAbsX + 24 && player.x + player.w > engAbsX && player.y < engAbsY + 42 && player.y + player.h > engAbsY) {
+                        engineerHoldTimer = 3.0;
+                        player.energy = Math.max(1, player.energy - 12);
+                        triggerStatus("🛑 Coincé par un ingénieur sédentaire ! 'Tu peux m'aider sur ce bug ?' (-12% Motivation, bloqué 3s)");
+                    }
+                }
+            });
+
+            player.vy += 0.60; player.y += player.vy;
+            if (player.x < 0) player.x = 0;
+            if (player.x > worldWidth - player.w) player.x = worldWidth - player.w;
+
+            if (player.y > canvas.height + 40) {
+                endGame(false, "😱 Chute de la terrasse ! Sécurité au travail non respectée.");
+                return;
+            }
+
+            if (Math.abs(player.vx) > 0 && slipTimer <= 0 && engineerHoldTimer <= 0) player.energy -= 0.045;
+            if (player.energy <= 0) { endGame(false, "💀 Burnout ! Votre motivation est à plat."); return; }
+
+            player.grounded = false;
+            platforms.forEach(plat => {
+                if (player.x < plat.x + plat.w && player.x + player.w > plat.x && player.y + player.h >= plat.y && player.y + player.vy <= plat.y + plat.h) {
+                    if (player.vy > 0 && player.y + player.h - player.vy <= plat.y + 12) { 
+                        player.y = plat.y - player.h; 
+                        player.vy = 0; 
+                        player.grounded = true; 
+                    }
+                }
+
+                if (plat.type === "Machine à Café" && !plat.usedCoffee) {
+                    if (player.x < plat.x + plat.w && player.x + player.w > plat.x && player.y + player.h >= plat.y - 10) {
+                        plat.usedCoffee = true;
+                        player.energy = Math.min(player.maxEnergy, player.energy + 15);
+                        triggerStatus("☕ Pause café improvisée ! (+15% Motivation)");
+                        score += 15;
+                    }
+                }
+            });
+
+            if (player.grounded && player.y >= 440 && slipTimer <= 0) {
+                puddles.forEach(pud => {
+                    if (player.x + player.w > pud.x && player.x < pud.x + pud.w) {
+                        slipTimer = 1.5; 
+                        slipDir = player.vx >= 0 ? 1 : -1;
+                        player.energy = Math.max(1, player.energy - 8);
+                        triggerStatus("☕ Oups ! Vous glissez sur du café renversé ! (-8% Motivation)");
+                    }
+                });
+            }
+
+            blocks.forEach(b => {
+                if (!b.used) {
+                    if (player.x < b.x + b.w && player.x + player.w > b.x) {
+                        if (player.vy < 0 && player.y <= b.y + b.h && player.y >= b.y + b.h - 18) {
+                            b.used = true; player.vy = 2.5; 
+                            if (b.type === "?") {
+                                if (Math.random() > 0.45) { 
+                                    player.energy = Math.min(player.maxEnergy, player.energy + 25); 
+                                    triggerStatus("✨ 'Excellents retours des bêta-testeurs !' (+25% Motivation)"); score += 40; 
+                                } else { 
+                                    player.energy = Math.max(10, player.energy - 25); 
+                                    triggerStatus("❌ 'Refactoring massif requis !' (-25% Motivation)"); 
+                                }
+                            } else { 
+                                timeLeft += 15; triggerStatus("💰 Injection de budget R&D ! (+15s)"); score += 30; 
+                            }
+                        }
+                    }
+                }
+            });
+
+            let activeProj = [];
+            projectiles.forEach(p => {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x > 0 && p.x < worldWidth && p.y < 530) {
+                    if (player.x < p.x + p.w && player.x + player.w > p.x && player.y < p.y + p.h && player.y + player.h > p.y) {
+                        if (p.type === "chair") { player.energy -= 12; player.x = Math.max(0, player.x - 35); triggerStatus("💥 Percuté par une chaise roulante !"); } 
+                        else if (p.type === "drawer") { player.energy -= 15; player.x = Math.max(0, player.x - 45); triggerStatus("💥 En plein dans le meuble mobile !"); } 
+                        else if (p.type === "plane") { player.energy -= 6; triggerStatus("🛩️ Distrait par un avion en papier !"); } 
+                        else if (p.type === "kpi") { player.energy -= 10; player.x = Math.max(0, player.x - 30); triggerStatus(`📩 Reçu : "${p.txt}" !`); }
+                    } else { activeProj.push(p); }
+                }
+            });
+            projectiles = activeProj;
+
+            let activeEnt = [];
+            entities.forEach(ent => {
+                // Gestion des mouvements spécifiques sur la terrasse
+                if (conf.isExterior && ent.platBound) {
+                    ent.x += ent.vx;
+                    
+                    if (!ent.isSuicidal) {
+                        // Font demi-tour avant le vide
+                        if (ent.x <= ent.platBound.x + 5) { ent.vx = Math.abs(ent.vx); }
+                        if (ent.x + ent.w >= ent.platBound.x + ent.platBound.w - 5) { ent.vx = -Math.abs(ent.vx); }
+                    } else {
+                        // S'ils tombent
+                        if (!ent.grounded) {
+                            ent.vy += 0.55; ent.y += ent.vy;
+                        } else if (ent.x < ent.platBound.x || ent.x + ent.w > ent.platBound.x + ent.platBound.w) {
+                            ent.grounded = false; ent.vx *= 0.3; // Chute libre
+                        }
+                    }
+                } else {
+                    // Mouvement standard niveaux 1-3
+                    if (!ent.grounded) {
+                        ent.vy += 0.55; ent.y += ent.vy;
+                        if (ent.y >= 458) { ent.y = 458; ent.vy = 0; ent.grounded = true; }
+                    }
+                    if (stunTimer <= 0 || ent.type !== "stagiaire") {
+                        ent.x += ent.vx;
+                        if (ent.type !== "einstein" && ent.type !== "barrage") {
+                            if (ent.x < 250 || ent.x > worldWidth - 600) { ent.vx *= -1; ent.baseVx = ent.vx; }
+                        }
+                    }
+                }
+
+                if (ent.type === "einstein") {
+                    ent.coffeeTimer -= dt;
+                    if (ent.coffeeTimer <= 0 && ent.grounded) { puddles.push({ x: ent.x, y: 495, w: 45, h: 5 }); ent.coffeeTimer = 1.8; }
+                }
+
+                // Collisions PNJ / Joueur
+                if (player.x < ent.x + ent.w && player.x + player.w > ent.x && player.y < ent.y + ent.h && player.y + player.h > ent.y) {
+                    if (player.vy > 0 && player.y + player.h - player.vy <= ent.y + 14) {
+                        player.vy = -11.0;
+                        if (ent.type === "barrage") { score += 80; triggerStatus(`💥 Écarté : ${ent.name} !`); }
+                        else if (ent.type === "assistante_cool") { score += 30; player.energy = Math.min(player.maxEnergy, player.energy + 10); triggerStatus("🍩 Double ration !"); }
+                        else { score += 25; triggerStatus("✅ Point d'avancement validé."); }
+                    } else {
+                        if (ent.type === "assistante_cool") {
+                            player.energy = Math.min(player.maxEnergy, player.energy - ent.dmg); triggerStatus(ent.msg); score += 20;
+                        } else if (ent.type === "einstein") {
+                            player.energy -= 5; triggerStatus("🔬 'Oh pardon, je cherchais mes notes...'"); activeEnt.push(ent);
+                        } else if (ent.type === "smoker") {
+                            player.energy = Math.max(1, player.energy - 3); triggerStatus("🚬 Vous traversez un nuage de fumée passive !"); activeEnt.push(ent);
+                        } else if (ent.type === "phone_user") {
+                            player.energy = Math.max(1, player.energy - 4); triggerStatus("💥 Percuté par quelqu'un scotché à son écran !"); player.x += ent.vx * 15; activeEnt.push(ent);
+                        } else {
+                            player.energy -= ent.dmg;
+                            if (ent.type === "stagiaire") { 
+                                if (stunTimer <= 0) { stunTimer = 2.0; triggerStatus("💬 Bloqué par les questions du stagiaire !"); ent.vx = -ent.baseVx; }
+                                activeEnt.push(ent); 
+                            } else { 
+                                player.x = Math.max(0, player.x - 30); if(ent.msg) triggerStatus(ent.msg); activeEnt.push(ent); 
+                            }
+                        }
+                    }
+                } else {
+                    if (ent.y > canvas.height + 50) { /* Detruit */ } else { activeEnt.push(ent); }
+                }
+            });
+            entities = activeEnt;
+
+            if (boss.alive) {
+                boss.vy += 0.60; boss.y += boss.vy;
+                if (boss.y >= 394) { boss.y = 394; boss.vy = 0; boss.grounded = true; } else { boss.grounded = false; }
+
+                if (boss.grounded && conf.bossJumpChance > 0) {
+                    boss.jumpTimer -= dt;
+                    if (boss.jumpTimer <= 0) {
+                        if (Math.random() < conf.bossJumpChance) { boss.vy = -conf.bossJumpForce; boss.grounded = false; }
+                        boss.jumpTimer = 1.5 + Math.random() * 2;
+                    }
+                }
+
+                boss.moodTimer -= dt;
+                if (!boss.isAngry && boss.moodTimer <= 0 && currentLevel !== 4) { 
+                    if (Math.random() < 0.4) { boss.isAngry = true; boss.angryDuration = 1.4; triggerStatus(`😡 Le ${boss.name} s'énerve et charge !`); }
+                    boss.moodTimer = 3.0 + Math.random() * 3;
+                }
+
+                if (boss.isAngry) {
+                    boss.angryDuration -= dt;
+                    let dir = player.x < boss.x ? -1 : 1;
+                    boss.x += dir * (boss.baseSpeed * 2.3);
+                    if (boss.angryDuration <= 0) boss.isAngry = false;
+                } else {
+                    boss.x += boss.vx;
+                    if (boss.x < boss.minX || boss.x > boss.maxX) boss.vx *= -1;
+                }
+
+                boss.attackTimer += dt;
+                if (boss.attackTimer > conf.bossAttackRate) {
+                    let diffX = player.x - boss.x;
+                    let projVx = diffX < 0 ? -conf.projSpeed : conf.projSpeed; 
+                    let randomTask = conf.quotes[Math.floor(Math.random() * conf.quotes.length)];
+                    let heightChoice = conf.bossHeights[Math.floor(Math.random() * conf.bossHeights.length)];
+                    let targetY = boss.y + 40; 
+                    
+                    if (heightChoice === "low") targetY = 475; 
+                    else if (heightChoice === "high") targetY = boss.y - 15; 
+
+                    projectiles.push({ x: diffX < 0 ? boss.x - 25 : boss.x + boss.w + 5, y: targetY, w: 24, h: 18, vx: projVx, vy: 0, type: "kpi", txt: randomTask });
+                    boss.attackTimer = 0;
+                }
+
+                if (player.x < boss.x + boss.w && player.x + player.w > boss.x && player.y < boss.y + boss.h && player.y + player.h > boss.y) {
+                    if (player.vy > 0 && player.y + player.h - player.vy <= boss.y + 24) {
+                        boss.hp--; player.vy = -12.0;
+                        if (boss.hp <= 0) {
+                            boss.alive = false; score += 400;
+                            if (currentLevel < 4) { currentLevel++; triggerStatus("🚀 Jalon validé !"); setTimeout(resetLevel, 1500); } else { endGame(true, ""); } 
+                        } else { 
+                            let reply = currentLevel === 4 ? "💥 Vous consolez le manager ! Reste " : "💥 Argument scientifique irréfutable ! Reste ";
+                            triggerStatus(reply + boss.hp + " doutes à lever."); 
+                        }
+                    } else {
+                        player.x = Math.max(0, player.x - 60); player.energy -= 14;
+                        let damageMsg = currentLevel === 4 ? "Le manager déprime..." : `❌ ${boss.name} : 'Pas rentable !'`;
+                        triggerStatus(damageMsg);
+                    }
+                }
+            }
+
+            cameraX = player.x - canvas.width / 2;
+            if (cameraX < 0) cameraX = 0;
+            if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+            if (statusTimer > 0) statusTimer--;
+        }
+
+        function drawRealisticHuman(ctx, x, y, w, h, shirtColor, pantsColor, type = "normal") {
+            ctx.save();
+            ctx.shadowBlur = 4; ctx.shadowColor = "rgba(0,0,0,0.3)";
+
+            ctx.fillStyle = "#ffdbac";
+            ctx.beginPath(); ctx.arc(x + w/2, y + h/5, h/5, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = type === "ceo" ? "#333333" : (type === "einstein" ? "#ecf0f1" : (type === "barrage" ? "#2c3e50" : "#d35400"));
+            ctx.beginPath(); ctx.arc(x + w/2, y + h/7, h/6, Math.PI, 0); ctx.fill();
+
+            if (type === "einstein") {
+                ctx.strokeStyle = "#34495e"; ctx.lineWidth = 2;
+                ctx.strokeRect(x + w/2 - 7, y + h/5 - 2, 5, 5); ctx.strokeRect(x + w/2 + 2, y + h/5 - 2, 5, 5);
+                ctx.fillStyle = "#ffffff"; ctx.fillRect(x, y + h/3, w, h/3);
+                ctx.fillStyle = shirtColor; ctx.fillRect(x + 6, y + h/3, w - 12, h/3);
+            } else if (type === "player") {
+                ctx.fillStyle = "#ffffff"; ctx.fillRect(x, y + h/3, w, h/3);
+                ctx.fillStyle = "#1abc9c"; ctx.fillRect(x + w/2 - 3, y + h/2 - 2, 6, 10); 
+                if (slipTimer > 0) { ctx.fillStyle = "#ff9f43"; ctx.font = "14px sans-serif"; ctx.fillText("🌀", x + w/2 - 5, y - 25); }
+            } else {
+                ctx.fillStyle = shirtColor; ctx.fillRect(x, y + h/3, w, h/3);
+            }
+
+            // Accessoires pour l'immersion terrasse
+            if (type === "smoker") {
+                ctx.fillStyle = "#ffffff"; ctx.fillRect(x + w, y + h/4, 4, 2); // Cigarette
+                ctx.fillStyle = "#ff4500"; ctx.fillRect(x + w + 4, y + h/4, 1, 2); // Bout rouge
+            } else if (type === "phone_user") {
+                ctx.fillStyle = "#00ffff"; ctx.fillRect(x - 2, y + h/3 + 6, 4, 7); // Téléphone brillant
+            }
+
+            ctx.fillStyle = type === "einstein" ? "#ffffff" : shirtColor;
+            ctx.fillRect(x - 3, y + h/3 + 2, 3, h/4); ctx.fillRect(x + w, y + h/3 + 2, 3, h/4);
+            ctx.fillStyle = pantsColor; ctx.fillRect(x + 4, y + (h*2)/3, w - 8, h/3);
+            ctx.fillStyle = "#111111"; ctx.fillRect(x + 2, y + h - 4, 7, 4); ctx.fillRect(x + w - 9, y + h - 4, 7, 4);
+
+            ctx.restore();
+        }
+
+        function drawPixelatedPortrait(ctx, target, x, y, w, h) {
+            ctx.fillStyle = "#111"; ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = "#ff8906"; ctx.lineWidth = 3; ctx.strokeRect(x, y, w, h);
+            
+            ctx.fillStyle = "#555"; // Épaulettes basiques pixelisées
+            ctx.fillRect(x + 20, y + h - 35, w - 40, 35);
+            
+            if (target === "einstein") {
+                ctx.fillStyle = "#eee"; ctx.fillRect(x + 30, y + 25, 60, 50); // Cheveux fous
+                ctx.fillStyle = "#ffdbac"; ctx.fillRect(x + 40, y + 35, 40, 45); // Visage
+                ctx.fillStyle = "#fff"; ctx.fillRect(x + 35, y + 70, 50, 15); // Moustache blanche
+            } else if (target === "curie") {
+                ctx.fillStyle = "#333"; ctx.fillRect(x + 35, y + 20, 50, 30); // Cheveux sombres relevés
+                ctx.fillStyle = "#ffdbac"; ctx.fillRect(x + 42, y + 40, 36, 45); // Visage
+                ctx.fillStyle = "#444"; ctx.fillRect(x + 25, y + h - 40, w - 50, 40); // Robe noire académique
+            } else if (target === "tesla") {
+                ctx.fillStyle = "#222"; ctx.fillRect(x + 38, y + 25, 44, 30); // Raie au milieu sombre
+                ctx.fillStyle = "#ffdbac"; ctx.fillRect(x + 40, y + 40, 40, 45); // Visage
+                ctx.fillStyle = "#222"; ctx.fillRect(x + 48, y + 72, 24, 8); // Moustache noire distinguée
+            }
+            
+            ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+            ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
+            ctx.fillText(target.toUpperCase(), x + w/2, y + 20);
+        }
+
+        function draw() {
+            let conf = levelConfig[currentLevel];
+            ctx.fillStyle = conf.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save(); ctx.translate(-cameraX, 0);
+
+            // Rendu des décors d'arrière-plan
+            backgroundDecors.forEach(dec => {
+                if (dec.type === "balustrade") {
+                    ctx.strokeStyle = "#546e7a"; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(dec.x, dec.y); ctx.lineTo(dec.x + dec.w, dec.y); ctx.stroke();
+                    for (let bx = dec.x + 10; bx < dec.x + dec.w; bx += 20) {
+                        ctx.beginPath(); ctx.moveTo(bx, dec.y); ctx.lineTo(bx, dec.y + dec.h); ctx.stroke();
+                    }
+                } else if (dec.type === "lampe") {
+                    ctx.strokeStyle = "#4a4a5a"; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(dec.x + dec.w/2, 0); ctx.lineTo(dec.x + dec.w/2, 25); ctx.stroke();
+                    ctx.fillStyle = "#f5f6fa"; ctx.fillRect(dec.x, 25, dec.w, 8);
+                } else if (dec.type === "portrait_geant") {
+                    drawPixelatedPortrait(ctx, dec.target, dec.x, dec.y, dec.w, dec.h);
+                } else if (dec.type === "tubes") {
+                    // Structures tubulaires / Pipettes géantes
+                    ctx.strokeStyle = "#95a5a6"; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(dec.x + 10, dec.y); ctx.lineTo(dec.x + 10, dec.y + dec.h - 20); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(dec.x + 10, dec.y + 40); ctx.lineTo(dec.x + dec.w - 10, dec.y + 40); ctx.stroke();
+                    // Cuve / Fiole
+                    ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.fillRect(dec.x + dec.w - 30, dec.y + 20, 30, 80);
+                    ctx.fillStyle = dec.fluidColor; ctx.fillRect(dec.x + dec.w - 28, dec.y + 50, 26, 48);
+                } else if (dec.type === "tableau") {
+                    ctx.fillStyle = "#22252a"; ctx.fillRect(dec.x, dec.y, dec.w, dec.h);
+                    ctx.strokeStyle = conf.decorColor; ctx.lineWidth = 4; ctx.strokeRect(dec.x, dec.y, dec.w, dec.h);
+                    ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.font = "italic 13px Georgia";
+                    if (dec.styleIndex === 0) { ctx.fillText("E = mc²", dec.x + 25, dec.y + 35); ctx.fillText("∇ × E = -∂B/∂t", dec.x + 25, dec.y + 65); } 
+                    else if (dec.styleIndex === 1) { ctx.fillText("iℏ ∂/∂t Ψ = Ĥ Ψ", dec.x + 15, dec.y + 40); } 
+                    else { ctx.fillText("Δx · Δp ≥ ℏ/2", dec.x + 30, dec.y + 75); }
+                } else if (dec.type === "poster") {
+                    ctx.fillStyle = "#2c3e50"; ctx.fillRect(dec.x, dec.y, dec.w, dec.h);
+                    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.strokeRect(dec.x, dec.y, dec.w, dec.h);
+                    ctx.fillStyle = "#ff8906"; ctx.font = "bold 9px sans-serif"; ctx.fillText("SCIENCE VERACITY", dec.x + 10, dec.y + 20);
+                    ctx.fillStyle = "#fff"; ctx.font = "italic 11px Arial";
+                    ctx.fillText(dec.text, dec.x + 10, dec.y + 45, dec.w - 20);
+                } else if (dec.type === "ecran") {
+                    ctx.fillStyle = "#1e1e24"; ctx.fillRect(dec.x, dec.y, dec.w, dec.h);
+                    ctx.strokeStyle = "#57606f"; ctx.lineWidth = 3; ctx.strokeRect(dec.x, dec.y, dec.w, dec.h);
+                    ctx.fillStyle = "#2ecc71"; ctx.lineWidth = 2; ctx.beginPath();
+                    let startY = dec.y + 40 + Math.sin(dec.seed)*15; ctx.moveTo(dec.x + 5, startY);
+                    for (let lx = 10; lx < dec.w - 5; lx += 15) { ctx.lineTo(dec.x + lx, dec.y + 20 + Math.sin(dec.seed * lx)*20); }
+                    ctx.stroke();
+                } else if (dec.type === "aquarium") {
+                    ctx.fillStyle = "rgba(52, 152, 219, 0.25)"; ctx.fillRect(dec.x, dec.y, dec.w, dec.h);
+                    ctx.strokeStyle = "#bdc3c7"; ctx.lineWidth = 3; ctx.strokeRect(dec.x, dec.y, dec.w, dec.h);
+                }
+            });
+
+            // Particules de fumée terrasse
+            smokeParticles.forEach(p => {
+                ctx.fillStyle = `rgba(200, 200, 200, ${p.alpha})`;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 3 + (1 - p.alpha) * 5, 0, Math.PI*2); ctx.fill();
+            });
+
+            ctx.fillStyle = "#5c3a21";
+            puddles.forEach(pud => { ctx.beginPath(); ctx.ellipse(pud.x + pud.w/2, pud.y + pud.h/2, pud.w/2, 6, 0, 0, Math.PI*2); ctx.fill(); });
+
+            // Dessin des meubles et plateformes
+            platforms.forEach(plat => {
+                ctx.fillStyle = plat.color || conf.groundColor; ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+                
+                if (plat.type === "floor") {
+                    ctx.fillStyle = "#ff8906"; ctx.fillRect(plat.x, plat.y, plat.w, 4);
+                } else {
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.25)"; ctx.lineWidth = 1.5; ctx.strokeRect(plat.x, plat.y, plat.w, plat.h);
+                    
+                    if (plat.type === "Bureau de Labo" || plat.type === "Bureau Bloquant" || plat.type === "Paillasse technique") {
+                        ctx.fillStyle = "#3f3f46"; ctx.fillRect(plat.x + 8, plat.y + 10, 10, plat.h); ctx.fillRect(plat.x + plat.w - 18, plat.y + 10, 10, plat.h); 
+
+                        // Dessin de l'Ingénieur Sédentaire bloqué sur sa chaise
+                        if (plat.lazyEng) {
+                            let ex = plat.x + plat.lazyEng.xOffset;
+                            let ey = plat.y - 42; 
+                            drawRealisticHuman(ctx, ex, ey, 24, 42, "#ff4d4d", "#2c3e50", "sedentaire");
+                            ctx.fillStyle = "#ff3333"; ctx.font = "bold 9px Arial"; ctx.fillText("💻 BUSY", ex - 4, ey - 6);
+                        }
+                    } else if (plat.type === "Machine à Café") {
+                        ctx.fillStyle = "#222"; ctx.fillRect(plat.x + plat.w/2 - 12, plat.y + 40, 24, 25); 
+                        ctx.fillStyle = plat.usedCoffee ? "#7f8c8d" : "#2ecc71"; ctx.fillRect(plat.x + plat.w/2 - 3, plat.y + 12, 6, 6); 
+                    }
+                }
+            });
+
+            blocks.forEach(b => {
+                ctx.fillStyle = b.used ? "#333" : (b.type === "?" ? "#f1c40f" : "#1abc9c"); ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.strokeStyle = "#fff"; ctx.strokeRect(b.x, b.y, b.w, b.h);
+                ctx.fillStyle = b.used ? "#666" : "#000"; ctx.font = "bold 14px monospace"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+                ctx.fillText(b.type, b.x + b.w/2, b.y + b.h/2);
+            });
+
+            entities.forEach(ent => {
+                drawRealisticHuman(ctx, ent.x, ent.y, ent.w, ent.h, ent.color, "#2c3e50", ent.type);
+                ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "11px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText(ent.name, ent.x + ent.w/2, ent.y - 6);
+            });
+
+            projectiles.forEach(p => {
+                if (p.type === "chair") {
+                    ctx.fillStyle = "#2d3436"; ctx.fillRect(p.x, p.y + 10, p.w, 6); ctx.fillStyle = "#d63031"; ctx.fillRect(p.x + 4, p.y, p.w - 8, 10); 
+                } else if (p.type === "drawer") {
+                    ctx.fillStyle = "#b2bec3"; ctx.fillRect(p.x, p.y, p.w, p.h - 4);
+                } else if (p.type === "plane") {
+                    ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.moveTo(p.x, p.y + p.h/2); ctx.lineTo(p.x + p.w, p.y); ctx.lineTo(p.x + p.w, p.y + p.h); ctx.closePath(); ctx.fill();
+                } else if (p.type === "kpi") {
+                    ctx.fillStyle = "#e74c3c"; ctx.fillRect(p.x, p.y, p.w, p.h); ctx.fillStyle = "#f1c40f"; ctx.font = "bold 11px Arial"; ctx.textAlign = "center"; ctx.fillText(p.txt, p.x + p.w/2, p.y - 7);
+                }
+            });
+
+            if (boss.alive) {
+                drawRealisticHuman(ctx, boss.x, boss.y, boss.w, boss.h, boss.color, "#1a252f", "ceo");
+                let barW = boss.w + 40; ctx.fillStyle = "#222"; ctx.fillRect(boss.x - 20, boss.y - 20, barW, 7);
+                ctx.fillStyle = "#e74c3c"; ctx.fillRect(boss.x - 20, boss.y - 20, barW * (boss.hp / boss.maxHp), 7);
+                ctx.fillStyle = "#fffffe"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText(boss.name + (boss.isAngry ? " 😡" : " 🎯"), boss.x + boss.w/2, boss.y - 26);
+            }
+
+            drawRealisticHuman(ctx, player.x, player.y, player.w, player.h, "#ffffff", "#2c3e50", "player");
+            ctx.fillStyle = "#fffffe"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText(userName, player.x + player.w / 2, player.y - 12);
+
+            if (engineerHoldTimer > 0) {
+                ctx.fillStyle = "#ff4d4d"; ctx.font = "bold 13px sans-serif";
+                ctx.fillText(`🛑 Écoute le bug (${Math.ceil(engineerHoldTimer)}s)...`, player.x + player.w/2, player.y - 32);
+            } else if (stunTimer > 0) {
+                ctx.fillStyle = "#e67e22"; ctx.font = "bold 13px sans-serif"; ctx.fillText("💬 Retenu par des questions...", player.x + player.w/2, player.y - 32);
+            }
+
+            ctx.restore();
+
+            ctx.fillStyle = timeLeft > 15 ? "#fffffe" : "#ff4757";
+            ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText("⏱️ TIMELINE DEADLINE : " + Math.ceil(timeLeft) + "s", 550, 40);
+
+            ctx.fillStyle = "#fffffe"; ctx.font = "15px sans-serif"; ctx.textAlign = "right";
+            ctx.fillText("Motivation : ", 970, 35);
+            ctx.fillStyle = "#222"; ctx.fillRect(980, 18, 100, 20);
+            ctx.fillStyle = player.energy > 30 ? "#2ed573" : "#ff4757"; ctx.fillRect(982, 20, 96 * (player.energy / player.maxEnergy), 16);
+
+            ctx.fillStyle = "#ff8906"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "left";
+            ctx.fillText("Score : " + score + " pts", 20, 35);
+            ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.font = "14px sans-serif"; ctx.fillText("📍 " + conf.name, 20, 60);
+
+            if (statusTimer > 0) {
+                ctx.fillStyle = "rgba(31, 30, 38, 0.95)"; ctx.fillRect(20, 80, 560, 32);
+                ctx.fillStyle = "#fffffe"; ctx.font = "13px sans-serif"; ctx.textAlign = "left";
+                ctx.fillText("🔔 INFO : " + statusText, 35, 101);
+            }
+        }
+
+        function endGame(victory, message) {
+            gameActive = false; document.getElementById('canvas-container').classList.add('hidden');
+            const screen = document.getElementById('gameover-screen'); screen.classList.remove('hidden');
+            const title = document.getElementById('end-title');
+            const msgContainer = document.getElementById('end-message');
+            const detailsContainer = document.getElementById('victory-details');
+            const actionBtn = document.getElementById('end-action-btn');
+
+            detailsContainer.innerHTML = ""; 
+
+            if (victory) {
+                title.innerText = "🏆 Victoire !"; title.style.color = "#2ecc71";
+                msgContainer.innerText = "Votre projet a été soumis au Big Boss !";
+                actionBtn.innerText = "Retour au Labo";
+
+                setTimeout(() => {
+                    const p1 = document.createElement('p'); p1.className = "victory-text";
+                    p1.innerText = "« Mais les métiers de la boîte sont ok ? On financerait en corporate ? »";
+                    detailsContainer.appendChild(p1); setTimeout(() => p1.classList.add('show'), 50);
+                }, 1200);
+
+                setTimeout(() => {
+                    const p2 = document.createElement('p'); p2.className = "victory-text"; p2.style.fontWeight = "bold"; p2.style.color = "#fffffe";
+                    p2.innerText = "« Il va falloir aller chercher du budget externe, go Projet Européen ! »";
+                    detailsContainer.appendChild(p2); setTimeout(() => p2.classList.add('show'), 50);
+                }, 3400);
+            } else {
+                title.innerText = "💀 FIN DE TIMELINE"; title.style.color = "#ff4757";
+                msgContainer.innerText = message + "\n\nScore d'influence : " + score + " points.";
+                actionBtn.innerText = "Retenter ma chance";
+            }
+        }
+    </script>
+</body>
+</html>
